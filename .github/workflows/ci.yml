@@ -2,11 +2,14 @@ name: CI
 
 on:
   pull_request:
+    branches: [master]
   push:
-    branches:
-      - master
-      - codex/ts-refactor
-      - release/npm-first
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -14,7 +17,7 @@ permissions:
 jobs:
   npm-first-ts:
     name: npm-first TS baseline
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
