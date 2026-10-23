@@ -1,7 +1,7 @@
 # TokenDanceCode
 
-> 本地 Coding Agent Runtime — TypeScript + Rust 双引擎并行
-> Local Coding Agent Runtime — TypeScript & Rust dual-engine
+> 本地命令行 Coding Agent · Rust 开发预览
+> Local command-line coding agent · Rust development preview
 
 ![TokenDanceCode CLI](docs/images/tokendance-cli-hero.svg)
 
@@ -11,7 +11,9 @@
 
 ## 什么是 TokenDanceCode
 
-TokenDanceCode 是一个**本地命令行 Coding Agent**。在代码仓库里运行 `tokendance`，它能：
+TokenDanceCode 是面向个人代码仓库的本地命令行 Coding Agent，目前处于 Rust 开发预览阶段。CLI 的单次运行、交互式 REPL 和 Rust AgentHub SDK adapter 使用 `MockProvider` 返回模拟响应；配置 API key 尚不能让这些入口调用模型或按提示完成代码任务。
+
+核心库已有以下模块，接入进度见[当前状态](docs/rust-rewrite-status.md)：
 
 - 📖 **阅读代码** — 搜索文件、正则匹配、Glob 模式
 - ✏️ **修改文件** — 精确字符串替换、整文件写入
@@ -19,42 +21,27 @@ TokenDanceCode 是一个**本地命令行 Coding Agent**。在代码仓库里运
 - 🔄 **管理会话** — JSONL transcript、session resume、上下文压缩
 - 🤖 **扩展能力** — MCP 工具协议、Subagent 编排
 
-面向**个人仓库**、**Windows / PowerShell 优先**，同时为 AgentHub 提供**可嵌入 SDK**。
+命令执行工具以 Windows / PowerShell 为主要目标；Rust SDK 提供 AgentHub 事件映射与审批接口，真实模型执行接入仍待完成。
 
-## 双引擎架构
+## 当前实现
 
-TokenDanceCode 同时维护 TypeScript 和 Rust 两套实现，功能对齐，API 兼容：
+`crates/` 是当前 Rust 实现。`packages/core`、`packages/sdk` 和旧 TypeScript CLI 源码保留作接口参考，不代表两套运行时已经功能对齐。
 
-| | TypeScript | Rust |
-|---|---|---|
-| **位置** | `packages/` | `crates/` |
-| **测试** | Vitest (pnpm verify) | cargo test (204 tests) |
-| **运行时** | Node.js | Native binary |
-| **npm 包** | `@tokendance/code-*` | 通过 wrapper shim 转发 |
-| **状态** | ✅ 生产可用 | ✅ 核心功能对齐 |
-
-两套实现**共存于同一仓库**，共享 `docs/`、`scripts/` 和 CI 配置。npm wrapper 优先调用 Rust binary，自动 fallback 到 TypeScript。
+`packages/cli/bin/tokendance.js` 是 Rust binary 的 npm 启动包装：查找本地 `target/release/tokendance`、`target/debug/tokendance`，再尝试平台原生包；找不到时退出，不会回退到 TypeScript。平台原生包的构建与分发仍在准备，当前从源码运行。
 
 ## 快速开始
 
-### Rust（推荐）
+### 从源码运行
+
+需要 Rust 工具链；以下 `run` 命令演示模拟会话，无需 API key。
 
 ```bash
-git clone https://github.com/TokenDanceLab/TokenDanceCode.git
-cd TokenDanceCode
+git clone https://github.com/TokenDanceLab/tokendance-code.git
+cd tokendance-code
 cargo run -p tokendance-cli -- --version     # tokendance 0.3.0-rs.0
 cargo run -p tokendance-cli -- doctor --json  # 健康检查
-cargo run -p tokendance-cli -- run "hello"    # 单次运行
-cargo test --workspace                        # 204 tests
-```
-
-### TypeScript
-
-```bash
-pnpm install
-pnpm verify                                   # typecheck + vitest
-node packages/cli/dist/main.js --version
-node packages/cli/dist/main.js doctor --json
+cargo run -p tokendance-cli -- run "hello"    # 模拟响应
+cargo test --workspace
 ```
 
 ### 交互式 REPL
@@ -67,7 +54,9 @@ tokendance> /help
 tokendance> /exit
 ```
 
-## 功能全景
+## 核心库模块
+
+以下清单描述库内实现。CLI/REPL 与 SDK adapter 的模拟运行不能作为真实模型、MCP、Subagent 或系统沙箱已端到端接通的验收。
 
 ### 🔧 内置工具 (7)
 
@@ -83,6 +72,8 @@ tokendance> /exit
 
 ### 🌐 Provider 传输 (3)
 
+这些 HTTP transport 位于 `crates/tokendance-core/src/providers/`，尚未接入 CLI/REPL 和 Rust SDK adapter 的运行入口。下表环境变量用于对应 transport，不会切换入口的 `MockProvider`。
+
 | Provider | 认证 | 传输门控 |
 |----------|------|----------|
 | OpenAI Chat Completions | `TOKENDANCE_GATEWAY_API_KEY` → `OPENAI_API_KEY` | `TOKENDANCE_GATEWAY_HTTP_TRANSPORT=1` |
@@ -97,7 +88,7 @@ tokendance> /exit
 - **工具风险分类**: Read / Write / Shell / Network / Dangerous
 - **路径安全**: 工作区路径归一化，阻止目录穿越和 symlink 逃逸
 - **破坏性命令拦截**: PowerShell `Remove-Item`、`format-volume` 等硬拒绝
-- **Sandboxing 抽象**: Windows restricted token / macOS Seatbelt / Linux bwrap
+- **Sandboxing 抽象**: Windows restricted token / macOS Seatbelt / Linux bwrap 的策略类型与参数生成；Windows 仍为 stub，Linux availability 返回不支持，不能视为已生效的系统进程隔离
 
 ### 🔌 扩展能力
 
@@ -120,15 +111,15 @@ tokendance> /exit
 ## 项目结构
 
 ```
-TokenDanceCode/
+tokendance-code/
 ├── crates/                          # Rust 实现
 │   ├── tokendance-core/             #   Runtime, Provider, Tools, Permissions
 │   ├── tokendance-sdk/              #   AgentHub SDK facade
 │   └── tokendance-cli/              #   CLI binary
-├── packages/                        # TypeScript 实现
-│   ├── core/                        #   Runtime, Provider, Tools
-│   ├── sdk/                         #   AgentHub SDK
-│   ├── cli/                         #   CLI + REPL
+├── packages/                        # npm 包与旧 TypeScript 源码
+│   ├── core/                        #   旧 Runtime 接口参考
+│   ├── sdk/                         #   旧 AgentHub SDK 接口参考
+│   ├── cli/                         #   Rust npm wrapper + 旧 CLI 源码
 │   └── agenthub-example/            #   接入示例 (private)
 ├── docs/                            # 共享文档
 ├── scripts/                         # 验证 & 发布脚本
@@ -138,6 +129,8 @@ TokenDanceCode/
 ```
 
 ## CLI 命令
+
+以下命令使用已构建的 Rust binary；`run` 和 REPL 返回模拟响应。直接从源码运行时，在命令参数前加 `cargo run -p tokendance-cli --`。
 
 ```bash
 tokendance                              # 交互式 REPL
@@ -153,29 +146,11 @@ tokendance quality                      # 质量概览
 
 REPL 内置 slash commands: `/help` `/status` `/exit` `/compact`
 
-## SDK 接入（AgentHub）
+## SDK 接口（AgentHub）
 
-```ts
-import { TokenDanceCode } from "@tokendance/code-sdk";
+当前 Rust facade 位于 `crates/tokendance-sdk`，adapter 的执行入口仍使用 `MockProvider`。[AgentHub SDK 文档](docs/agenthub-sdk.md)保留 TypeScript 接口与集成契约；其中示例不代表 Rust adapter 已完成真实模型接入或原生包发布。
 
-const client = new TokenDanceCode({
-  storageRoot: "~/.tokendance",
-  env: process.env,
-  eventSink(event) { console.log(event.type); }
-});
-
-const thread = client.startThread({
-  workingDirectory: process.cwd(),
-  permissionMode: "default"
-});
-
-const turn = await thread.run("summarize this repo");
-console.log(turn.finalResponse);
-```
-
-详见 [AgentHub SDK 文档](docs/agenthub-sdk.md)。
-
-## Rust 模块清单 (20 modules, 204 tests)
+## Rust 模块清单
 
 | 模块 | 功能 |
 |------|------|
@@ -199,13 +174,15 @@ console.log(turn.finalResponse);
 
 ## 验证
 
+完整测试会执行 PowerShell。Windows 使用 `powershell.exe`；Linux/macOS 需要把 PowerShell 7 的 `pwsh` 加入 `PATH`。
+
 ```bash
 # Rust 验证
 cargo fmt --all -- --check
-cargo test --workspace                    # 204 tests
+cargo test --workspace
 cargo run -p tokendance-cli -- doctor
 
-# TypeScript 验证
+# 根脚本同样运行 Cargo fmt + workspace tests
 pnpm verify
 
 # 发布准备
@@ -218,7 +195,7 @@ node scripts/smoke-rust-release.mjs
 | 文档 | 内容 |
 |------|------|
 | [架构设计](docs/rust-rewrite-architecture.md) | Rust 重写架构：20 个模块的设计决策 |
-| [当前状态](docs/rust-rewrite-status.md) | Phase 1–5 完成记录，模块状态表 |
+| [当前状态](docs/rust-rewrite-status.md) | 模块实现、入口接入限制与发布待办 |
 | [工具参考](docs/rust-tool-reference.md) | 7 个内置工具的输入/输出 schema |
 | [发布清单](docs/rust-release-checklist.md) | Release owner 发布前检查项 |
 | [AgentHub SDK](docs/agenthub-sdk.md) | SDK 接入、event sink、approval bridge |

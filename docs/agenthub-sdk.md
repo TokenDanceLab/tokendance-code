@@ -1,8 +1,8 @@
-# AgentHub SDK 接入指南
+# AgentHub TypeScript SDK 接口参考
 
 日期：2026-06-09
 
-本文记录 `codex/ts-refactor` 分支当前可用的 TypeScript SDK 集成面。AgentHub 应把 `@tokendance/code-sdk` 当作唯一稳定入口，避免直接依赖 `@tokendance/code-core` 的 runtime 内部类。
+本文保留 `codex/ts-refactor` 阶段的 TypeScript SDK 接口与集成契约。当前 Rust facade 位于 `crates/tokendance-sdk`，adapter 仍使用 `MockProvider`；下文示例不代表当前 Rust 入口已完成模型调用或 npm 发布。当前接入限制见 [Rust 状态](rust-rewrite-status.md)，发布条件见[发布准备](release-readiness.md)。
 
 ## 1. 集成边界
 
