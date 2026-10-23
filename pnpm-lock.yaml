@@ -24,11 +24,7 @@ importers:
         specifier: workspace:*
         version: link:../sdk
 
-  packages/cli:
-    dependencies:
-      '@tokendance/code-sdk':
-        specifier: workspace:*
-        version: link:../sdk
+  packages/cli: {}
 
   packages/core: {}
 
