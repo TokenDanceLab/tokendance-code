@@ -1,10 +1,10 @@
 # TokenDanceCode Agent Guide
 
-TokenDanceCode is a local command-line Coding Agent / harness for personal developers. This worktree is the Rust rewrite branch. Keep the scope narrow and explicit: it is not a cloud platform, IDE plugin, marketplace, persistent team-agent system, or AgentHub replacement.
+TokenDanceCode is a local command-line Coding Agent / harness for personal developers. The public default branch contains a Rust development preview; CLI/REPL and the Rust SDK adapter currently execute with MockProvider. Keep the scope narrow and explicit: it is not a cloud platform, IDE plugin, marketplace, persistent team-agent system, or AgentHub replacement.
 
 ## Repository
 
-- GitHub: `TokenDanceLab/TokenDanceCode`
+- GitHub: `TokenDanceLab/tokendance-code`
 - Public packages: `@tokendance/code-core`, `@tokendance/code-sdk`, `@tokendance/code-cli`
 - Command: `tokendance`
 - Runtime: Rust 1.95+ for active code; Node.js/pnpm remains only for npm wrapper and legacy TS contract checks.
@@ -44,7 +44,7 @@ Do not describe TokenDanceCode as:
 - `README.md` is the public entry point: positioning, install, model configuration, commands, project structure, current maturity, and docs map.
 - `docs/产品功能需求文档.md` owns product requirements and non-goals.
 - `docs/架构设计文档.md` owns runtime boundaries and data flow.
-- `docs/开发流程文档.md` owns the current TypeScript development loop.
+- `docs/开发流程文档.md` retains the legacy TypeScript development loop; README and `docs/rust-rewrite-status.md` describe the current Rust baseline.
 - `docs/端到端验收清单.md` owns manual acceptance checks.
 - `docs/并行推进计划.md` owns maintainer workstream planning and the next candidate queue.
 - `docs/并行执行状态.md` is a public progress log with user-visible changes, merge commits, and verification summaries. Do not add agent IDs, private paths, token-bearing commands, or local operator runbooks.
@@ -52,8 +52,7 @@ Do not describe TokenDanceCode as:
 
 ## Current Development Baseline
 
-- Active branch: `codex/rust-rewrite`.
-- Release candidate branch: `release/npm-first`.
+- Public default branch: `master`; `codex/rust-rewrite` and `release/npm-first` are historical development references, not current release candidates.
 - Current public status: Rust rewrite scaffold is not release-ready. Do not publish npm or GitHub releases until Rust release gates are implemented and verified.
 - Current AgentHub contract target: SDK manifest `agenthub-sdk.v1`, `agent.stream` schema version `2`, and terminal failure frames via `run.agent.result` with `success=false`.
 - Current privacy boundary: project root `.env` is ignored and not loaded by default; examples must point users to controlled shell env, SDK `env`, or user-global `~/.tokendance/.env`.

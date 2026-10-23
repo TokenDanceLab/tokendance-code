@@ -557,7 +557,12 @@ pub fn create_run_powershell_tool() -> ToolDefinition {
                 .unwrap_or(120)
                 .min(600);
 
-            let output = std::process::Command::new("powershell.exe")
+            let executable = if cfg!(target_os = "windows") {
+                "powershell.exe"
+            } else {
+                "pwsh"
+            };
+            let output = std::process::Command::new(executable)
                 .arg("-Command")
                 .arg(trimmed)
                 .current_dir(&session.cwd)
@@ -1348,12 +1353,13 @@ mod tests {
     #[test]
     fn workspace_path_tools_deny_path_escape_with_safety_evidence() {
         let registry = create_default_tool_registry();
+        let outside_path = PathBuf::from("..").join("outside.txt");
         let result = registry
             .execute(
                 &ToolCall {
                     id: "read-escape".to_string(),
                     name: "read_file".to_string(),
-                    input: json!({ "path": "..\\outside.txt" }),
+                    input: json!({ "path": outside_path }),
                 },
                 &session(PermissionMode::Yolo),
             )

@@ -1,8 +1,8 @@
 # Release Readiness
 
-Last updated: 2026-06-09 21:05 HKT.
+Last updated: 2026-10-23.
 
-TokenDanceCode is on the Rust rewrite branch. The current release work is scaffolding for a Rust-first npm binary wrapper and package review plan; it is not a publish-ready candidate and it must not publish npm packages from automation.
+The public default branch contains a Rust development preview and a Rust-first npm binary wrapper. CLI `run`, REPL and the Rust SDK adapter still use `MockProvider`; real HTTP transports are library modules, not the execution path of these entry points. Native package artifacts and model-backed integration remain release work. The current baseline is not publish-ready and must not publish npm packages from automation.
 
 ## Candidate
 
@@ -26,7 +26,7 @@ Current result must be refreshed before any release-owner action. `E404` is acce
 
 ## Local Gates
 
-Run from the workspace root:
+Run from the workspace root. Shell-tool tests require `powershell.exe` on Windows or PowerShell 7's `pwsh` on Linux/macOS:
 
 ```powershell
 pnpm verify
@@ -41,7 +41,7 @@ For now, `pnpm verify` intentionally stays Rust-only:
 cargo fmt --all -- --check && cargo test --workspace
 ```
 
-The older pack and contract gates remain historical TypeScript-package checks until the Rust wrapper exists. Do not treat `pnpm release:next:check` as the Rust release gate yet.
+The older pack and contract gates remain TypeScript-package checks. The Rust wrapper exists, but does not run the legacy TypeScript CLI as a fallback. Do not treat `pnpm release:next:check` as the Rust release gate.
 
 `pnpm smoke:gateway` is an optional maintainer-only provider smoke. It requires explicit opt-in environment variables, never reads the project root `.env`, never runs `npm publish`, and must redact provider keys and base URLs from subprocess output.
 

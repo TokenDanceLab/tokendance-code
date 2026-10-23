@@ -1,15 +1,18 @@
 # Rust Rewrite Status
 
-This document records public, secret-free progress for the Rust rewrite branch.
+Last updated: 2026-10-23.
 
-## Branch
+The public default branch contains a Rust development preview. CLI `run`, the interactive REPL and the Rust SDK adapter construct `Runtime::new(MockProvider, ...)`. HTTP provider modules exist, but these entry points are not wired to them. The project is not release-ready.
 
-- Branch: `codex/rust-rewrite`
-- Worktree: repo-local `.worktrees/rust-rewrite`
+## Implementation history
+
+- Original rewrite branch: `codex/rust-rewrite`; current public baseline is `master`.
 - Base: TypeScript refactor branch after the AgentHub same-session concurrency fixes.
 - First Rust scaffold commit: `5eb584e feat(rust): scaffold rewrite workspace`
 
-## Current Baseline
+## Implemented modules
+
+The table records module-level work from the rewrite. `Done` refers to that slice's implementation, not end-to-end CLI integration or release acceptance. In particular, provider transports, MCP, subagents and sandbox policy need separate entry-point and behavior verification. `sandbox.rs` contains stubs/policy helpers, not enforced process isolation.
 
 | Area | Status | Evidence |
 |---|---|---|
@@ -38,9 +41,11 @@ This document records public, secret-free progress for the Rust rewrite branch.
 | Context builder | Done | working context detection, project type inference, instruction file discovery |
 | Session resume | Done | transcript-based session restore and continuation |
 | Provider smoke | Done | opt-in smoke test via `scripts/smoke-providers.mjs` |
-| Release readiness | Done | comprehensive gate via `scripts/smoke-rust-release.mjs` |
+| Release readiness | Pending | Gate script exists; model-backed entry points and native-package artifacts remain unfinished |
 
-## Verified Gates
+## Verification commands
+
+Run these on the candidate being reviewed. Their presence in this document is not a current pass result; `run` exercises the mock provider.
 
 ```powershell
 pnpm verify
@@ -55,7 +60,7 @@ cargo run -p tokendance-cli -- quality
 node scripts/smoke-rust-release.mjs
 ```
 
-Current Rust test coverage (204 total):
+Historical rewrite test coverage (refresh with `cargo test --workspace` before reporting a current count):
 
 - CLI: 12 tests
 - Core: 185 tests
@@ -106,8 +111,10 @@ Current Rust test coverage (204 total):
 
 ## Release Boundary
 
-This branch is ready for pre-release review. The next release candidate requires:
+The current baseline is a development preview. A release candidate still requires:
 
+- Model-backed CLI/REPL and SDK execution with end-to-end verification
+- Reviewed native-package artifacts and fresh install checks for supported targets
 - Manual release-owner review of package contents
 - All `scripts/smoke-rust-release.mjs` gates passing
 - Privacy scan clean on all public files

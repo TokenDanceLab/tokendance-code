@@ -15,23 +15,22 @@ permissions:
   contents: read
 
 jobs:
-  npm-first-ts:
-    name: npm-first TS baseline
-    runs-on: ubuntu-latest
+  rust-preview:
+    name: Rust preview
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6.1.0
         with:
-          version: 10.32.1
           run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -39,14 +38,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check release contract
-        run: pnpm contract:check
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.1
+          components: rustfmt
 
-      - name: Verify TypeScript baseline
+      - name: Check PowerShell test dependency
+        run: pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()'
+
+      - name: Verify Rust workspace
         run: pnpm verify
 
-      - name: Smoke test packed tarballs
-        run: pnpm pack:smoke
+      - name: Check Rust release plan
+        run: pnpm release:rust:plan:check
 
-      - name: Check npm next registry state
-        run: pnpm registry:next:check
+      - name: Smoke test Rust wrapper tarball
+        run: pnpm smoke:rust-wrapper

@@ -1,6 +1,6 @@
 # TokenDanceCode
 
-> Local Coding Agent Runtime — TypeScript + Rust dual-engine
+> Local command-line coding agent · Rust development preview
 
 ![TokenDanceCode CLI](docs/images/tokendance-cli-hero.svg)
 
@@ -10,7 +10,9 @@
 
 ## What Is TokenDanceCode
 
-TokenDanceCode is a **local command-line Coding Agent**. Run `tokendance` inside a repository to:
+TokenDanceCode is a local command-line coding agent for personal repositories, currently in Rust development preview. The CLI single-turn command, interactive REPL and Rust AgentHub SDK adapter use `MockProvider` to return simulated responses. Setting an API key does not yet make these entry points call a model or carry out coding tasks from prompts.
+
+The core library contains the following modules. See [current status](docs/rust-rewrite-status.md) for integration limits:
 
 - 📖 **Read code** — search files, regex matching, glob patterns
 - ✏️ **Edit files** — exact-string replacement, full-file write
@@ -18,42 +20,27 @@ TokenDanceCode is a **local command-line Coding Agent**. Run `tokendance` inside
 - 🔄 **Manage sessions** — JSONL transcript, session resume, context compaction
 - 🤖 **Extend capabilities** — MCP tool protocol, subagent orchestration
 
-Designed for **personal repos**, **Windows / PowerShell first**, with an **embeddable AgentHub SDK**.
+The command tool primarily targets Windows / PowerShell. The Rust SDK provides AgentHub event mapping and approval interfaces; model-backed execution integration remains unfinished.
 
-## Dual-Engine Architecture
+## Current implementation
 
-TokenDanceCode maintains both TypeScript and Rust implementations in the same repository — feature-aligned, API-compatible:
+`crates/` contains the active Rust implementation. `packages/core`, `packages/sdk` and the legacy TypeScript CLI source remain as interface references; their presence does not establish feature parity between two runtimes.
 
-| | TypeScript | Rust |
-|---|---|---|
-| **Location** | `packages/` | `crates/` |
-| **Tests** | Vitest (pnpm verify) | cargo test (204 tests) |
-| **Runtime** | Node.js | Native binary |
-| **npm packages** | `@tokendance/code-*` | Forwarded via wrapper shim |
-| **Status** | ✅ Production-ready | ✅ Core feature parity |
-
-Both implementations **coexist** sharing `docs/`, `scripts/`, and CI config. The npm wrapper prefers the Rust binary and falls back to TypeScript.
+`packages/cli/bin/tokendance.js` is an npm launcher for the Rust binary. It looks for local `target/release/tokendance` and `target/debug/tokendance`, then tries a platform-native package. It exits if no binary is found; there is no TypeScript fallback. Native-package build and distribution work remains open, so run from source for now.
 
 ## Quick Start
 
-### Rust (recommended)
+### Run from source
+
+A Rust toolchain is required. The `run` command below demonstrates a simulated session and needs no API key.
 
 ```bash
-git clone https://github.com/TokenDanceLab/TokenDanceCode.git
-cd TokenDanceCode
+git clone https://github.com/TokenDanceLab/tokendance-code.git
+cd tokendance-code
 cargo run -p tokendance-cli -- --version     # tokendance 0.3.0-rs.0
 cargo run -p tokendance-cli -- doctor --json  # health check
-cargo run -p tokendance-cli -- run "hello"    # single turn
-cargo test --workspace                        # 204 tests
-```
-
-### TypeScript
-
-```bash
-pnpm install
-pnpm verify                                   # typecheck + vitest
-node packages/cli/dist/main.js --version
-node packages/cli/dist/main.js doctor --json
+cargo run -p tokendance-cli -- run "hello"    # simulated response
+cargo test --workspace
 ```
 
 ### Interactive REPL
@@ -66,7 +53,9 @@ tokendance> /help
 tokendance> /exit
 ```
 
-## Features
+## Core library modules
+
+The following sections describe library implementations. Mock runs through the CLI/REPL or SDK adapter do not verify end-to-end model, MCP, subagent or OS sandbox integration.
 
 ### 🔧 Built-in Tools (7)
 
@@ -82,6 +71,8 @@ tokendance> /exit
 
 ### 🌐 Provider Transports (3)
 
+These HTTP transports live in `crates/tokendance-core/src/providers/` and are not yet wired into the CLI/REPL or Rust SDK adapter execution entry points. The variables below configure the transports; they do not replace those entry points' `MockProvider`.
+
 | Provider | Auth | Transport Gate |
 |----------|------|----------------|
 | OpenAI Chat Completions | `TOKENDANCE_GATEWAY_API_KEY` → `OPENAI_API_KEY` | `TOKENDANCE_GATEWAY_HTTP_TRANSPORT=1` |
@@ -96,7 +87,7 @@ All providers automatically redact API keys from error messages.
 - **Tool risk classification**: Read / Write / Shell / Network / Dangerous
 - **Path safety**: Workspace path normalization, blocks directory traversal and symlink escape
 - **Destructive command interception**: PowerShell `Remove-Item`, `format-volume` hard-denied
-- **Sandboxing abstraction**: Windows restricted token / macOS Seatbelt / Linux bwrap
+- **Sandboxing abstraction**: Policy types and argument generation for Windows restricted tokens / macOS Seatbelt / Linux bwrap. Windows remains a stub and Linux availability reports unsupported; this is not enforced OS process isolation.
 
 ### 🔌 Extensibility
 
@@ -119,15 +110,15 @@ All providers automatically redact API keys from error messages.
 ## Project Structure
 
 ```
-TokenDanceCode/
+tokendance-code/
 ├── crates/                          # Rust implementation
 │   ├── tokendance-core/             #   Runtime, Provider, Tools, Permissions
 │   ├── tokendance-sdk/              #   AgentHub SDK facade
 │   └── tokendance-cli/              #   CLI binary
-├── packages/                        # TypeScript implementation
-│   ├── core/                        #   Runtime, Provider, Tools
-│   ├── sdk/                         #   AgentHub SDK
-│   ├── cli/                         #   CLI + REPL
+├── packages/                        # npm packages and legacy TypeScript source
+│   ├── core/                        #   Legacy runtime interface reference
+│   ├── sdk/                         #   Legacy AgentHub SDK interface reference
+│   ├── cli/                         #   Rust npm wrapper + legacy CLI source
 │   └── agenthub-example/            #   Integration example (private)
 ├── docs/                            # Shared documentation
 ├── scripts/                         # Verification & release scripts
@@ -137,6 +128,8 @@ TokenDanceCode/
 ```
 
 ## CLI Commands
+
+These commands use a built Rust binary; `run` and the REPL return simulated responses. To run from source, prefix the arguments with `cargo run -p tokendance-cli --`.
 
 ```bash
 tokendance                              # Interactive REPL
@@ -152,29 +145,11 @@ tokendance quality                      # Quality overview
 
 REPL slash commands: `/help` `/status` `/exit` `/compact`
 
-## AgentHub SDK
+## AgentHub SDK interface
 
-```ts
-import { TokenDanceCode } from "@tokendance/code-sdk";
+The current Rust facade lives in `crates/tokendance-sdk`; its adapter execution entry point still uses `MockProvider`. The [AgentHub SDK docs](docs/agenthub-sdk.md) retain the TypeScript API and integration contract. Those examples do not establish Rust model-backed execution or native-package publication.
 
-const client = new TokenDanceCode({
-  storageRoot: "~/.tokendance",
-  env: process.env,
-  eventSink(event) { console.log(event.type); }
-});
-
-const thread = client.startThread({
-  workingDirectory: process.cwd(),
-  permissionMode: "default"
-});
-
-const turn = await thread.run("summarize this repo");
-console.log(turn.finalResponse);
-```
-
-See [AgentHub SDK docs](docs/agenthub-sdk.md) for full integration guide.
-
-## Rust Modules (20 modules, 204 tests)
+## Rust modules
 
 | Module | Function |
 |--------|----------|
@@ -198,13 +173,15 @@ See [AgentHub SDK docs](docs/agenthub-sdk.md) for full integration guide.
 
 ## Verification
 
+The full test suite executes PowerShell. Windows uses `powershell.exe`; Linux/macOS require PowerShell 7's `pwsh` on `PATH`.
+
 ```bash
 # Rust gates
 cargo fmt --all -- --check
-cargo test --workspace                    # 204 tests
+cargo test --workspace
 cargo run -p tokendance-cli -- doctor
 
-# TypeScript gates
+# Root script also runs Cargo fmt + workspace tests
 pnpm verify
 
 # Release readiness
@@ -217,7 +194,7 @@ node scripts/smoke-rust-release.mjs
 | Document | Content |
 |----------|---------|
 | [Architecture](docs/rust-rewrite-architecture.md) | Rust rewrite architecture — 20 module design decisions |
-| [Status](docs/rust-rewrite-status.md) | Phase 1–5 completion record, module status |
+| [Status](docs/rust-rewrite-status.md) | Module implementation, entry-point limits and release work |
 | [Tool Reference](docs/rust-tool-reference.md) | 7 built-in tools input/output schemas |
 | [Release Checklist](docs/rust-release-checklist.md) | Release owner pre-publish checklist |
 | [AgentHub SDK](docs/agenthub-sdk.md) | SDK integration, event sink, approval bridge |
